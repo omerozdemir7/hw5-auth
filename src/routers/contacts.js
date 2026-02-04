@@ -5,11 +5,16 @@ import {
   createContactController,
   patchContactController,
   deleteContactController,
+  createContactsBulkController,
 } from '../controllers/contacts.js';
 import ctrlWrapper from '../utils/ctrlWrapper.js';
 import { validateBody } from '../middlewares/validateBody.js';
 import { isValidId } from '../middlewares/isValidId.js';
-import { createContactSchema, updateContactSchema } from '../validation/contacts.js';
+import {
+  createContactSchema,
+  updateContactSchema,
+  createContactsBulkSchema,
+} from '../validation/contacts.js';
 import { authenticate } from '../middlewares/authenticate.js';
 
 const router = Router();
@@ -30,6 +35,12 @@ router.post(
   ctrlWrapper(createContactController)
 );
 
+router.post(
+  '/bulk',
+  validateBody(createContactsBulkSchema),
+  ctrlWrapper(createContactsBulkController)
+);
+
 router.patch(
   '/:contactId',
   isValidId,
@@ -44,23 +55,3 @@ router.delete(
 );
 
 export default router;
-
-// 1. İMPORT KISMINA YENİLERİ EKLE:
-import { 
-  // ... diğerleri ...
-  createContactsBulkController // <-- Bunu ekle
-} from '../controllers/contacts.js';
-
-import { 
-  // ... diğerleri ...
-  createContactsBulkSchema // <-- Bunu ekle
-} from '../validation/contacts.js';
-
-
-// 2. ROTA TANIMLARININ ARASINA ŞUNU EKLE (Post / altına olabilir):
-
-router.post(
-  '/bulk',
-  validateBody(createContactsBulkSchema),
-  ctrlWrapper(createContactsBulkController)
-);

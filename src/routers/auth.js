@@ -1,39 +1,53 @@
-import { Router } from 'express';
-import { ctrlWrapper } from '../utils/ctrlWrapper.js'; // Hata yakalayıcı wrapper'ınız
-import { validateBody } from '../middlewares/validateBody.js'; // Joi validasyon middleware'iniz
-import { 
-  registerUserSchema, 
-  loginUserSchema 
-} from '../validation/auth.js'; // Joi şemaları (sizin oluşturmanız gerekecek)
-import { 
-  registerUserController, 
-  loginUserController, 
-  logoutUserController, 
-  refreshUserSessionController 
-} from '../controllers/auth.js';
+import { registerUser, loginUser, logoutUser, refreshUsersSession } from '../services/auth.js';
 
-const router = Router();
+const setupSession = (res, session) => {
+  res.cookie('refreshToken', session.refreshToken, {
+    httpOnly: true,
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 Gün
+  });
+  res.cookie('sessionId', session._id, {
+    httpOnly: true,
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+  });
+};
 
-router.post(
-  '/register',
-  validateBody(registerUserSchema),
-  ctrlWrapper(registerUserController),
-);
+export const registerUserController = async (req, res) => {
+  const user = await registerUser(req.body);
+  res.status(201).json({
+    status: 201,
+    message: 'Successfully registered a user!',
+    data: user,
+  });
+};
 
-router.post(
-  '/login',
-  validateBody(loginUserSchema),
-  ctrlWrapper(loginUserController),
-);
+export const loginUserController = async (req, res) => {
+  const session = await loginUser(req.body.email, req.body.password);
+  setupSession(res, session);
+  res.status(200).json({
+    status: 200,
+    message: 'Successfully logged in an user!',
+    data: { accessToken: session.accessToken },
+  });
+};
 
-router.post(
-  '/refresh',
-  ctrlWrapper(refreshUserSessionController),
-);
+export const logoutUserController = async (req, res) => {
+  if (req.cookies.sessionId) {
+    await logoutUser(req.cookies.sessionId);
+  }
+  res.clearCookie('sessionId');
+  res.clearCookie('refreshToken');
+  res.status(204).send();
+};
 
-router.post(
-  '/logout',
-  ctrlWrapper(logoutUserController),
-);
-
-export default router;
+export const refreshUserSessionController = async (req, res) => {
+  const session = await refreshUsersSession({
+    sessionId: req.cookies.sessionId,
+    refreshToken: req.cookies.refreshToken,
+  });
+  setupSession(res, session);
+  res.status(200).json({
+    status: 200,
+    message: 'Successfully refreshed a session!',
+    data: { accessToken: session.accessToken },
+  });
+};
